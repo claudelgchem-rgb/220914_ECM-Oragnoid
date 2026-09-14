@@ -37,7 +37,8 @@ def load_patents():
     p = os.path.join(SCR, "fpo_claims.json")
     return json.load(open(p)) if os.path.exists(p) else {}
 
-DOI_RE = re.compile(r"10\.\d{4,5}/[A-Za-z0-9./_():;-]+")
+# 한 셀에 "DOI:a;DOI:b" 형태로 여러 건이 들어오므로 구분자에서 끊는다.
+DOI_RE = re.compile(r"10\.\d{4,5}/[A-Za-z0-9./_()<>-]+(?:;(?![Dd][Oo][Ii]:)[A-Za-z0-9./_()<>-]+)*")
 PAT_RE = re.compile(r"\b((?:US|EP|WO|CN|JP|KR|AU|ES|TW|NL)\s?\d{4,13}\s?[A-Z]\d?)\b")
 
 def main():
@@ -49,7 +50,9 @@ def main():
             continue
         t = open(os.path.join(BASE, fn), encoding="utf-8", errors="replace").read()
         for d in DOI_RE.findall(t):
-            use_doi[d.lower().rstrip(").,;:]")].add(fn)
+            d = d.lower().rstrip(").,;:]").rstrip(".")
+            if len(d) > 8:
+                use_doi[d].add(fn)
         for p in PAT_RE.findall(t):
             use_pat[p.replace(" ", "")].add(fn)
 
