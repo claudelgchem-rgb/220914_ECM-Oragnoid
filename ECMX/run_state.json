@@ -1,0 +1,81 @@
+{
+ "run_id": "ECMX-002",
+ "today": "2026-09-14",
+ "date_source": "container system clock (UTC), verified at boot via `date -u`",
+ "stage": 3,
+ "gates": {
+  "G1": "pass",
+  "G2": "pending",
+  "G3": "pending",
+  "G4": "pending",
+  "G5": "pending",
+  "G6": "pending",
+  "G7": "pending",
+  "G8": "pending",
+  "G9": "pending"
+ },
+ "agents": {
+  "A": {
+   "status": "complete",
+   "retries": 0
+  },
+  "B": {
+   "status": "complete",
+   "retries": 0
+  },
+  "C": {
+   "status": "running",
+   "retries": 0
+  },
+  "D": {
+   "status": "running",
+   "retries": 0
+  },
+  "E": {
+   "status": "running",
+   "retries": 0
+  },
+  "F": {
+   "status": "pending",
+   "retries": 0
+  },
+  "G": {
+   "status": "pending",
+   "retries": 0
+  },
+  "N": {
+   "status": "running",
+   "retries": 0
+  },
+  "P": {
+   "status": "running",
+   "retries": 0
+  },
+  "X": {
+   "status": "pending",
+   "retries": 0
+  },
+  "V": {
+   "status": "pending",
+   "retries": 0
+  },
+  "R": {
+   "status": "pending",
+   "retries": 0
+  },
+  "W": {
+   "status": "pending",
+   "retries": 0
+  }
+ },
+ "counts": {
+  "papers": 269,
+  "patents": 104,
+  "materials": 0,
+  "essential_items": 0,
+  "axes_covered": 0,
+  "figures": 0
+ },
+ "started_at": "2026-09-14T02:17:32Z",
+ "updated_at": "2026-09-14T02:52:00Z"
+}
