@@ -45,11 +45,14 @@ FORBIDDEN = [
 ]
 # 금지수치를 '반박·주의'로 인용하는 문맥은 허용
 REBUTTAL_HINT = re.compile(
-    r"금지\s*수치|인용하지|사실이\s*아니|것이\s*아니다|아니다|오류|반박|순환\s*파생|주의|배제|§4|"
-    r"근거\s*없|정확히\s*말하면|삭제와|수용\s*경로|점진적|오해|잘못|해당하여|추적\s*가능한\s*1차")
+    r"금지\s*수치|인용하지\s*(말|않)|사실이\s*아니|것이\s*아니다|승인한\s*것이\s*아니|"
+    r"반박|순환\s*파생|§4|배제(함|했|한다)|추적\s*가능한\s*1차\s*출처가?\s*(없|부재)|"
+    r"정확히\s*말하면|오기재|오해|잘못\s*(된|전용)|무비판")
 
 DEFER = [r"이후\s*조사하겠", r"추가\s*확인이\s*필요", r"다음\s*단계에서\s*다루", r"추후\s*보완",
-         r"향후\s*조사", r"TBD\b", r"to\s+be\s+determined"]
+         r"향후\s*조사", r"TBD\b", r"to\s+be\s+determined",
+         r"추후\s*(에\s*)?(다루|검토|보강|조사)", r"향후\s*(과제로|검토|보강)", r"다음\s*단계로\s*미",
+         r"차후\s*(에\s*)?(다루|검토)"]
 
 errors, warns, info = [], [], []
 
@@ -232,8 +235,11 @@ def main():
                 if re.search(pat, line, re.I) and not REBUTTAL_HINT.search(line):
                     errors.append(f"[§4] HTML:{line_no} {name} 무비판 인용 의심")
 
-    print("=" * 72)
-    print(f"ECMX validate.py — BASE={BASE}")
+
+
+    check_extra()
+
+
     print("=" * 72)
     for i in info:
         print("  INFO  " + i)
@@ -244,6 +250,148 @@ def main():
     print("-" * 72)
     print(f"결과: {'PASS' if not errors else 'FAIL'}  (오류 {len(errors)}건)")
     return 1 if errors else 0
+
+
+# ─────────── 확장 검사 (V 감사 반려-009 반영) ───────────
+BAD_MISSING = ("unknown", "미상", "n/a", "na", "-", "?", "미정")
+
+SUP_FIELDS = ["supplier_id","supplier_name","country","category","product_name","catalog_no",
+  "grade","origin","spec","price","pack_size","storage","lead_time","supply_risk",
+  "source_url","verified_date","confidence","confidence_reason"]
+PLS_FIELDS = ["patent_id","title","assignee","assignee_type","jurisdiction","priority_date",
+  "filing_date","pub_date","ipc","tech_category","claim_checked","legal_status","expiry_note",
+  "significance","confidence","confidence_reason"]
+PES_FIELDS = ["patent_id","title","assignee","app_no","file_date","pub_date","ipc","claim_type",
+  "essential_elements","composition_ranges","organoid_scope","legal_status","claim_quote",
+  "confidence","confidence_reason"]
+
+
+def norm_name(s):
+    """물질명 정규화 — 표기 차이를 흡수해 중복 등재를 탐지한다."""
+    s = (s or "").lower()
+    s = re.sub(r"\(.*?\)", " ", s)
+    s = re.sub(r"[\s\-_·,/]+", "", s)
+    s = re.sub(r"(전구체|계열|제품군|용액|분말|무수|과립|이온가교)$", "", s)
+    return s
+
+
+def check_extra():
+    # (가) 추가 CSV 스키마 + 사유 없는 결측 표지
+    for fn, fields, idk, label in (("suppliers.csv", SUP_FIELDS, "supplier_id", "공급"),
+                                   ("patents_landscape.csv", PLS_FIELDS, "patent_id", "특허랜드스케이프"),
+                                   ("patent_essentials.csv", PES_FIELDS, "patent_id", "특허독립항")):
+        rows, _ = read_csv(fn)
+        if not rows: continue
+        check_schema(rows, fields, label, idk)
+        for r in rows:
+            for c in fields:
+                v = (r.get(c) or "").strip().lower()
+                if v in BAD_MISSING:
+                    errors.append(f"[{label}] 사유 없는 결측 표지 '{r.get(c)}': {r.get(idk)} / {c}")
+        info.append(f"[{label}] {len(rows)}행 스키마 검사 완료")
+
+    inv, _ = read_csv("material_inventory.csv")
+    ess, _ = read_csv("essential_items.csv")
+    mtx, _ = read_csv("essential_matrix.csv")
+
+    # (나) 물질명 정규화 중복 — 같은 층위 안의 제품(SKU) 변형은 정상이므로
+    #     '동일 물질이 서로 다른 층위에 중복 등재된 경우'만 결함으로 본다(V 감사 반려-004의 실제 결함 유형).
+    if inv:
+        seen = {}
+        for r in inv:
+            key = norm_name(r.get("name_ko"))
+            if len(key) < 3: continue
+            seen.setdefault(key, []).append((r.get("layer"), r.get("material_id")))
+        cross = {k: v for k, v in seen.items() if len({l for l, _ in v}) > 1}
+        if cross:
+            for k, v in list(cross.items())[:12]:
+                errors.append(f"[G2] 동일 물질이 서로 다른 층위에 중복 등재: '{k}' → {sorted(v)}")
+        else:
+            info.append("[G2] 층위 간 동일 물질 중복 등재: 0건 (같은 층위 내 제품 변형은 정상으로 간주)")
+        sku = {k: v for k, v in seen.items() if len(v) > 1 and len({l for l, _ in v}) == 1}
+        if sku:
+            info.append(f"[G2] 같은 층위 내 제품 변형 {len(sku)}군 — 등급 일관성은 아래 R-13 검사로 확인")
+
+    # (다) R-10 — function_role이 매트릭스 비해당인데 essentiality가 '필수'
+    if inv:
+        pat = re.compile(r"매트릭스\s*(결합형\s*)?아님|매트릭스\s*성분이\s*아니|배지\s*(첨가형|성분)")
+        bad = [r for r in inv if pat.search(r.get("function_role", ""))
+               and (r.get("essentiality") or "").strip() == "필수"]
+        for r in bad:
+            errors.append(f"[R-10] 배지·비매트릭스 성분에 '필수' 부여: {r.get('material_id')} {r.get('name_ko')}")
+        if not bad:
+            info.append("[R-10] 배지 성분의 매트릭스 '필수' 오기재: 0건")
+        # essentiality 값 영역
+        for r in inv:
+            e = (r.get("essentiality") or "").strip()
+            if e not in ("필수", "조건부", "선택"):
+                errors.append(f"[M2] essentiality 값 오류: {r.get('material_id')} = '{e}'")
+        # 판정 기준 문서화 여부
+        defined = False
+        for fn in os.listdir(BASE):
+            if fn.endswith(".md"):
+                t = open(os.path.join(BASE, fn), encoding="utf-8", errors="replace").read()
+                if "essentiality" in t and ("판정 기준" in t or "기준은" in t):
+                    defined = True; break
+        if defined:
+            info.append("[R-13] essentiality 판정 기준이 문서에 정의됨")
+        else:
+            errors.append("[R-13] essentiality 3단계의 판정 기준이 어느 문서에도 정의되지 않음")
+
+    # (라) 동일 물질 SKU 간 등급 역전
+    if inv:
+        grp = {}
+        for r in inv:
+            k = norm_name(r.get("name_ko"))
+            if len(k) < 3: continue
+            grp.setdefault(k, set()).add((r.get("essentiality") or "").strip())
+        split = {k: v for k, v in grp.items() if len(v) > 1}
+        if split:
+            for k, v in list(split.items())[:10]:
+                errors.append(f"[R-13] 동일 물질의 제품 간 필수도 불일치: '{k}' → {sorted(v)}")
+        else:
+            info.append("[R-13] 동일 물질 제품 간 필수도 역전: 0건")
+
+    # (마) tier ↔ 조직 매트릭스 교차 검사
+    #     주의: 한 축(AX-n)에 여러 열이 걸리고(예: "AX-1 라미닌", "AX-1 RGD 대체"),
+    #     매트릭스 셀은 축 전체의 요약 판정이라 항목 등급과 입도가 다르다.
+    #     따라서 '최대 모순'(항목 E0인데 해당 조직의 그 축 열이 전부 E3)만 결함으로 본다.
+    if ess and mtx:
+        col0 = list(mtx[0].keys())[0]
+        bad = []
+        for r in ess:
+            if (r.get("tier") or "").strip() != "E0":
+                continue
+            scope = r.get("tissue_scope", "")
+            if "전체" in scope:
+                continue
+            axes = re.findall(r"AX-\d", r.get("axis", ""))
+            for row in mtx:
+                tkey = row.get(col0, "").split("(")[0].strip()
+                if not tkey or tkey not in scope:
+                    continue
+                for ax in axes:
+                    cells = [(c, (v or "").strip()[:2]) for c, v in row.items()
+                             if c != col0 and c.startswith(ax)]
+                    if cells and all(v == "E3" for _, v in cells):
+                        bad.append(f"{tkey}/{ax}: 항목 {r.get('essential_id')} E0 ↔ 매트릭스 전 열 E3")
+        bad = sorted(set(bad))
+        for m in bad[:10]:
+            errors.append(f"[G4] 항목 등급과 조직 매트릭스가 최대 모순: {m}")
+        if not bad:
+            info.append("[G4] tier ↔ 조직 매트릭스 교차 검사: 최대 모순(E0 ↔ 전 열 E3) 0건")
+
+    # (바) 초록 전용 근거로 E0·E1 부여
+    if ess:
+        weak = [r for r in ess if r.get("tier") in ("E0", "E1")
+                and re.search(r"본문\s*미확인|초록\s*범위", r.get("experiment_summary", ""))
+                and (r.get("confidence") or "").strip() == "하"]
+        for r in weak:
+            errors.append(f"[R-13] 초록 전용·신뢰도 하 근거로 {r.get('tier')} 부여: {r.get('essential_id')}")
+        if not weak:
+            info.append("[R-13] 초록 전용·신뢰도 하 근거의 E0·E1: 0건")
+
+
 
 
 if __name__ == "__main__":
