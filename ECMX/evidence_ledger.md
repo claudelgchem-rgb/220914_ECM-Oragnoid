@@ -197,7 +197,7 @@ unresolved: 0
 | 172 | The Effect of Thiol Structure on Allyl Sulfide Photodegradable Hydrogels and their Application as a Degradable Scaffol | Advanced materials (Deerfield Beach, F | 2020 | 10.1002/adma.201905366 | 32548863 | 서지·초록 | 04_materials_chem.md, inv_chem.csv, material_inventory.csv |
 | 173 | Cellulose Nanofibril Hydrogel Promotes Hepatic Differentiation of Human Liver Organoids | Advanced healthcare materials | 2020 | 10.1002/adhm.201901658 | 32090504 | 서지·초록 | 01_overview_core.md, 02_trends.md |
 | 174 | Relaxation of Extracellular Matrix Forces Directs Crypt Formation and Architecture in Intestinal Organoids | Advanced healthcare materials | 2020 | 10.1002/adhm.201901214 | 31957249 | 서지·초록 | 01_overview_core.md, 02_trends.md |
-| 175 | A Chemically Defined Hydrogel for Human Liver Organoid Culture | Advanced functional materials | 2020 | 10.1002/adfm.202000893 | 34658689 | [전문확보 PMC7611838] | 01_overview_core.md, 02_trends.md, 03_materials_bio.md, 05_specs_regulatory.md, 09_audit.md, 11_essential_materials.md, essential_items.csv |
+| 175 | A Chemically Defined Hydrogel for Human Liver Organoid Culture | Advanced functional materials | 2020 | 10.1002/adfm.202000893 | 34658689 | [전문확보 PMC7611838] | 01_overview_core.md, 02_trends.md, 03_materials_bio.md, 05_specs_regulatory.md, 11_essential_materials.md, essential_items.csv |
 | 176 | Intestinal Organoid Culture in Polymer Film-Based Microwell Arrays | Advanced biosystems | 2020 | 10.1002/adbi.202000126 | 32734713 | 서지·초록 | 02_trends.md |
 | 177 | Sources of Collagen for Biomaterials in Skin Wound Healing | Bioengineering (Basel, Switzerland) | 2019 | 10.3390/bioengineering6030056 | 31261996 | 서지·초록 | 05_specs_regulatory.md, inv_bio.csv, material_inventory.csv |
 | 178 | Bioinspired Hydrogels for 3D Organoid Culture | Chimia | 2019 | 10.2533/chimia.2019.81 | 30814005 | 서지·초록 | 02_trends.md |
@@ -405,7 +405,7 @@ unresolved: 0
 
 | # | 특허번호 | 제목 | 출원인 | 출원일 | 공개/등록일 | 청구항 | 인용 파일 |
 |---:|---|---|---|---|---|---|---|
-| 1 | EP0218065B1 | Reconstituted basement membrane complex with biological activity | US HEALTH | 08/22/1986 | 08/14/1991 | 청구항 원문 확보 | 07_patents.md, 08_redteam.md, 10_confidence.md, 12_patent_essentials.md, orchestrator_log.md, patent_essentials.csv, patents_landscape.csv |
+| 1 | EP0218065B1 | Reconstituted basement membrane complex with biological activity | US HEALTH | 08/22/1986 | 08/14/1991 | 청구항 원문 확보 | 07_patents.md, 08_redteam.md, 09_audit.md, 10_confidence.md, 12_patent_essentials.md, orchestrator_log.md, patent_essentials.csv, patents_landscape.csv |
 | 2 | EP2793912B1 | ORGANOIDS COMPRISING DECELLULARIZED AND REPOPULATED PLACENTAL VASCULAR S | CELULARITY INC | 12/21/2012 | 03/18/2020 | 청구항 원문 확보 | 07_patents.md, 10_confidence.md, 12_patent_essentials.md, patent_essentials.csv, patents_landscape.csv |
 | 3 | EP2958933B1 | CROSSLINKED PEPTIDE HYDROGELS | AGENCY SCIENCE TECH & RES | 01/28/2014 | 08/22/2018 | 청구항 원문 확보 | 07_patents.md, 10_confidence.md, 12_patent_essentials.md, patent_essentials.csv, patents_landscape.csv |
 | 4 | EP3144319A1 | CELL CULTURE COMPOSITION COMPRISING LAMININ-521 | TRYGGVASON KARL 
@@ -474,7 +474,7 @@ unresolved: 0
 | 59 | US12514957B2 | Omentum based scaffold and delivery system | Ramot at Tel-Aviv University Ltd. | 11/17/2019 | 01/06/2026 | 청구항 원문 확보 | 07_patents.md, 10_confidence.md, 12_patent_essentials.md, patent_essentials.csv, patents_landscape.csv |
 | 60 | US12584907B1 | Viscoelastic hydrogel regulation of organoid patterning and vascularizat | The Florida State University Resea | 04/10/2025 | 03/24/2026 | 청구항 원문 확보 | 07_patents.md, 10_confidence.md, 12_patent_essentials.md, patent_essentials.csv, patents_landscape.csv |
 | 61 | US12599699B2 | Co-crosslinked hyaluronic acid-silk fibroin hydrogels for improving tiss | Allergan, Inc. | 03/18/2024 | 04/14/2026 | 청구항 원문 확보 | 07_patents.md, patents_landscape.csv |
-| 62 | US20070224273A1 | Multifunctional Supramolecular Hydrogels as Biomaterials | - | 03/28/2007 | 09/27/2007 | 청구항 원문 확보 | 07_patents.md, patents_landscape.csv |
+| 62 | US20070224273A1 | Multifunctional Supramolecular Hydrogels as Biomaterials | - | 03/28/2007 | 09/27/2007 | 청구항 원문 확보 | 07_patents.md, 09_audit.md, patents_landscape.csv |
 | 63 | US20110306136A1 | LAMININ-ENTACTIN COMPLEX AND CELL CULTURE ARTICLE AND METHODS THEREOF | CHANG THERESA 
 
  LIU JIN 
@@ -515,7 +515,7 @@ unresolved: 0
 | 92 | US20260035671A1 | COMPOSITIONS COMPRISING PREVASCULARIZED ORGANOIDS AND METHODS FOR ENHANC | The Trustees of Columbia Universit | 08/01/2025 | 02/05/2026 | 청구항 원문 확보 | patents_landscape.csv |
 | 93 | US20260085267A1 | HIGH-SPEED DISPENSING SPOTTER FOR BIOLOGICAL SAMPLE AND CELL DISPENSING  | MBD Co., Ltd. | 09/22/2025 | 03/26/2026 | 청구항 원문 확보 | 12_patent_essentials.md |
 | 94 | US20260137836A1 | MAGNETICALLY-ALIGNED SYNTHETIC EXTRACELLULAR MATRIX FIBERS WITHIN HYDROG | The Regents of The University of M | 12/19/2025 | 05/21/2026 | 청구항 원문 확보 | 07_patents.md, 09_audit.md, 10_confidence.md, 12_patent_essentials.md, patent_essentials.csv, patents_landscape.csv |
-| 95 | US4829000A | Reconstituted basement membrane complex with biological activity | The United States of America as re | 05/27/1986 | 05/09/1989 | 청구항 원문 확보 | 07_patents.md, 08_redteam.md, 10_confidence.md, 12_patent_essentials.md, orchestrator_log.md, patent_essentials.csv, patents_landscape.csv |
+| 95 | US4829000A | Reconstituted basement membrane complex with biological activity | The United States of America as re | 05/27/1986 | 05/09/1989 | 청구항 원문 확보 | 07_patents.md, 08_redteam.md, 09_audit.md, 10_confidence.md, 12_patent_essentials.md, orchestrator_log.md, patent_essentials.csv, patents_landscape.csv |
 | 96 | US5158874A | Determining metastic potential of tumor cells and isolating metastic tum | The United States of America as re | 12/29/1988 | 10/27/1992 | 청구항 원문 확보 | 07_patents.md, 10_confidence.md, 12_patent_essentials.md, patent_essentials.csv, patents_landscape.csv |
 | 97 | US8513015B2 | (원문 미취득) | - | - | - | 서지정보만 | 07_patents.md |
 | 98 | US8513380B2 | Peptides for binding fibrinogen and fibrin | Georgia Tech Research Corporation | 07/09/2010 | 08/20/2013 | 청구항 원문 확보 | 07_patents.md, patents_landscape.csv |

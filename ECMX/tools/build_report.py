@@ -460,8 +460,8 @@ def ch9():
     l8 = [r for r in INV if (r.get("layer") or "").strip() == "L8"]
     spec_rows = [[f'<b>{esc(r.get("name_ko",""))}</b><br><span style="font-size:11.5px;color:var(--faint)">{esc(r.get("name_en",""))}</span>',
                   esc((r.get("spec") or "")[:210]),
-                  esc((r.get("function_role") or "")[:110]),
-                  esc((r.get("essentiality") or "")),
+                  esc(re.sub(r"^\[규격 항목[^\]]*\]\s*", "", r.get("function_role") or "")[:110]),
+                  esc((r.get("essentiality") or "").replace("(출하 판정 시험)", "").replace("(규격 항목)", "")),
                   badge(r.get("confidence"), r.get("confidence_reason"))] for r in l9]
     buf_rows = [[f'<b>{esc(r.get("name_ko",""))}</b>', esc((r.get("function_role") or "")[:130]),
                  esc((r.get("spec") or "")[:110]), esc((r.get("supplier") or "")[:34]),
@@ -492,8 +492,8 @@ def ch9():
 "내독소가 낮다"는 서술은 규격이 아니며, "≤ 0.5 EU/mL, LAL 겔화법"이라야 규격이다.
 아래 표의 '규격 기준과 시험법' 열은 그 원칙에 따라 작성했다.</p>
 
-{table(['규격 항목', '규격 기준과 시험법', '무엇을 막기 위한 것인가', '필수도', '신뢰도'], spec_rows,
-       f'표 6. 품질·안전 규격 항목 {len(l9)}건. 출처: 본 조사 inv_spec.csv 및 05_specs_regulatory.md. 기준일 {TODAY}')}
+{table(['규격 항목', '규격 기준과 시험법', '무엇을 막기 위한 것인가', '출하 판정 필수 여부', '신뢰도'], spec_rows,
+       f'표 6. 품질·안전 규격 항목 {len(l9)}건. 이 열은 <b>출하 판정 시 반드시 시험해야 하는가</b>를 뜻하며, 앞 장들의 매트릭스 소재 필수도(E0~E3)와는 다른 축이다 — L9는 물질이 아니라 시험 항목이기 때문이다. 출처: 본 조사 inv_spec.csv 및 05_specs_regulatory.md. 기준일 {TODAY}')}
 
 <p>이 항목들 중 오가노이드 지지체에서 특히 자주 문제가 되는 것은 <b>내독소</b>와
 <b>로트 간 저장탄성률 편차</b> 둘이다. 내독소는 미량으로도 세포 반응을 교란하므로 원료 단계부터

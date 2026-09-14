@@ -322,17 +322,28 @@ def check_extra():
         if not bad:
             info.append("[R-10] 배지 성분의 매트릭스 '필수' 오기재: 0건")
         # essentiality 값 영역
+        # L9는 물질이 아니라 규격 항목이므로 '필수'의 뜻이 다르다. 값에 그 구분을 명시하도록 허용한다.
+        OK_VALS = ("필수", "조건부", "선택",
+                   "필수(출하 판정 시험)", "조건부(규격 항목)", "선택(규격 항목)")
         for r in inv:
             e = (r.get("essentiality") or "").strip()
-            if e not in ("필수", "조건부", "선택"):
+            if e not in OK_VALS:
                 errors.append(f"[M2] essentiality 값 오류: {r.get('material_id')} = '{e}'")
+            if r.get("layer") == "L9" and e in ("필수", "조건부", "선택"):
+                errors.append(f"[R-13] L9 규격 항목의 essentiality에 매트릭스 필수도 값을 사용: "
+                              f"{r.get('material_id')} = '{e}' — 규격 항목임을 값에 명시해야 함")
         # 판정 기준 문서화 여부
+        # 주의: 감사·레드팀·신뢰도 문서는 '기준이 없다'고 지적하는 과정에서 같은 낱말을 쓰므로
+        #       검사 대상에서 제외한다. 기준은 조사 산출물(01_~07_) 안에 있어야 한다.
+        SRC = [f for f in os.listdir(BASE)
+               if re.match(r"0[1-7]_.*\.md$", f)]
         defined = False
-        for fn in os.listdir(BASE):
-            if fn.endswith(".md"):
-                t = open(os.path.join(BASE, fn), encoding="utf-8", errors="replace").read()
-                if "essentiality" in t and ("판정 기준" in t or "기준은" in t):
-                    defined = True; break
+        for fn in SRC:
+            t = open(os.path.join(BASE, fn), encoding="utf-8", errors="replace").read()
+            if "essentiality" in t and re.search(r"판정\s*기준|부여\s*기준", t):
+                defined = True
+                info.append(f"[R-13] essentiality 판정 기준 정의 위치: {fn}")
+                break
         if defined:
             info.append("[R-13] essentiality 판정 기준이 문서에 정의됨")
         else:
@@ -344,7 +355,7 @@ def check_extra():
         for r in inv:
             k = norm_name(r.get("name_ko"))
             if len(k) < 3: continue
-            grp.setdefault(k, set()).add((r.get("essentiality") or "").strip())
+            grp.setdefault(k, set()).add(re.sub(r"\(.*?\)", "", (r.get("essentiality") or "")).strip())
         split = {k: v for k, v in grp.items() if len(v) > 1}
         if split:
             for k, v in list(split.items())[:10]:

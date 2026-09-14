@@ -2,7 +2,7 @@
 agent: D
 status: complete
 date_checked: 2026-09-14
-items_count: 74
+items_count: 71
 evidence_count: {papers: 57, patents: 0}
 unresolved: 14
 ---
@@ -27,7 +27,7 @@ unresolved: 14
 
 # 04. 화학·합성 물질 (M2 / L5~L7)
 
-본 문서는 ECMX-002 물질 지도 M2의 하위 세 층위 — **L5 펩타이드 모티프·기능화 리간드**, **L6 가교제·개시제·촉매**, **L7 합성 백본·하이브리드** — 를 담당한다. 등재 물질은 74건이며(L5 20건, L6 29건, L7 25건), 전량 `inv_chem.csv`에 동일 ID로 대응한다. 서지는 오케스트레이터가 제공한 검증 문헌 풀(랜드마크 40편 + D_chem 434편 + 교차 풀) 내부에서만 인용했고, 인용한 고유 논문은 57편이다. 공급사·카탈로그번호·규격·가격은 2026-09-14에 제조사 공식 제품 페이지(JenKem Technology USA, Cellendes GmbH, Zedira GmbH, Merck/Sigma-Aldrich, Thermo Fisher/Pierce, Advanced BioMatrix, Corning, Laysan Bio, Vector Laboratories, R&D Systems, Bachem, Noviocell, Ajinomoto, 3-D Matrix)를 조회해 기재했다. 74건 중 실제 제품 품번을 확보한 것은 46건(62%)이며, 공급사를 특정한 것은 68건(92%)이다. 확보하지 못한 항목은 `unknown`이 아니라 결측 사유를 명시했다(예: 맞춤합성 전용으로 재고 품번 부재, 제조사 페이지 HTTP 403/503 차단, 상용품 자체 부재). 특허 조사는 본 에이전트 범위 밖이므로 0건이다.
+본 문서는 ECMX-002 물질 지도 M2의 하위 세 층위 — **L5 펩타이드 모티프·기능화 리간드**, **L6 가교제·개시제·촉매**, **L7 합성 백본·하이브리드** — 를 담당한다. 등재 물질은 71건이며(L5 20건, L6 27건, L7 24건 — 중복 병합 후 최종값), `inv_chem.csv`에 대응한다(단, 위 병합 고지의 3건은 다른 층위의 대표 ID로 통합되어 이 파일에서 제외)한다. 서지는 오케스트레이터가 제공한 검증 문헌 풀(랜드마크 40편 + D_chem 434편 + 교차 풀) 내부에서만 인용했고, 인용한 고유 논문은 57편이다. 공급사·카탈로그번호·규격·가격은 2026-09-14에 제조사 공식 제품 페이지(JenKem Technology USA, Cellendes GmbH, Zedira GmbH, Merck/Sigma-Aldrich, Thermo Fisher/Pierce, Advanced BioMatrix, Corning, Laysan Bio, Vector Laboratories, R&D Systems, Bachem, Noviocell, Ajinomoto, 3-D Matrix)를 조회해 기재했다. 74건 중 실제 제품 품번을 확보한 것은 46건(62%)이며, 공급사를 특정한 것은 68건(92%)이다. 확보하지 못한 항목은 `unknown`이 아니라 결측 사유를 명시했다(예: 맞춤합성 전용으로 재고 품번 부재, 제조사 페이지 HTTP 403/503 차단, 상용품 자체 부재). 특허 조사는 본 에이전트 범위 밖이므로 0건이다.
 
 **용어 사전(최초 등장 시 한 줄 풀이 원칙)**
 - **하이드로겔(hydrogel)**: 물을 90~99% 머금은 채로 형태를 유지하는 고분자 그물망. 세포를 3차원으로 품는 배양 지지체.
