@@ -239,6 +239,7 @@ def main():
 
     check_extra()
     check_prose()
+    check_grade_mapping()
 
 
     print("=" * 72)
@@ -448,12 +449,42 @@ def check_prose():
             if v != n and v > 9:
                 line = t[:mm.start()].count("\n") + 1
                 errors.append(f"[G5] {md}:{line} 산문 총계 {v}건 ≠ {cs} 행수 {n}")
-        # 'N건 중' 형태의 모수도 총계와 일치해야 한다
+        # 'N건 중' 형태의 모수 — 전체 총계이거나 그 문서의 층위·부분집합 실측과 일치해야 한다.
+        # 어긋나면 FAIL. (WARN으로 두었더니 실재 결함이 PASS를 통과했다 — V 4차 감사 지적)
+        subset = set()
+        rows_ = list(csv.DictReader(open(pc, encoding="utf-8-sig")))
+        if rows_:
+            subset |= set(collections.Counter(r.get("layer", "") for r in rows_).values())
+            subset |= set(collections.Counter(r.get("tier", "") for r in rows_).values())
+            subset |= set(collections.Counter(r.get("category", "") for r in rows_).values())
+            subset |= set(collections.Counter(r.get("essentiality", "") for r in rows_).values())
+            subset |= set(collections.Counter(r.get("confidence", "") for r in rows_).values())
+            subset |= set(collections.Counter(r.get("grade", "") for r in rows_).values())
+            subset |= set(collections.Counter(r.get("claim_checked", "") for r in rows_).values())
+            # 품번·공급사·가격 확보 건수 같은 실무 부분집합
+            for col, pat in (("catalog_no", r"^(맞춤합성|확보 실패|미확인|해당없음)"),
+                             ("supplier", r"^(확보 실패|미확인|해당없음)"),
+                             ("price", r"(미표시|미확인|확인 실패|차단|해당없음)")):
+                if rows_ and col in rows_[0]:
+                    subset.add(sum(1 for r in rows_ if (r.get(col) or "").strip()
+                                   and not re.search(pat, (r.get(col) or "").strip())))
+        ok_vals = {n} | {v for v in subset if v}
+        # 다른 데이터셋(예: 특허 검색 원자료 726건, 청구항 원문 104건)을 가리키는 문장이 있으므로,
+        # '이 문서의 자기 인벤토리'를 가리키는 문맥에서만 발화한다.
+        SELF_CTX = re.compile(r"등재|본 문서|이 문서|인벤토리|L[1-9]\b|"
+                              + re.escape(cs.replace(".csv", "")))
         for mm in re.finditer(r"\*{0,2}(\d{2,4})\*{0,2}\s*건\s*중", t):
             v = int(mm.group(1))
-            if v > 9 and v != n and not re.search(r"[0-9]\s*건\s*중\s*(실제|해당|일부)?\s*[0-9]", mm.group(0)):
-                line = t[:mm.start()].count("\n") + 1
-                warns.append(f"[G5] {md}:{line} 모수 {v}건 (CSV 행수 {n}) — 부분집합이면 무시")
+            if v <= 9 or v in ok_vals:
+                continue
+            ls = t.rfind("\n", 0, mm.start()) + 1
+            le = t.find("\n", mm.end())
+            sent = t[ls:le if le > 0 else len(t)]
+            if not SELF_CTX.search(sent):
+                continue          # 다른 데이터셋 참조로 간주
+            line = t[:mm.start()].count("\n") + 1
+            errors.append(f"[G5] {md}:{line} 모수 '{v}건 중'이 {cs}의 총계({n})와도 "
+                          f"어떤 부분집합 실측과도 일치하지 않음")
     info.append("[G5] 산문 총계 ↔ CSV 행수 대조 완료")
 
     # T-c. 본문이 주장하는 매트릭스 셀 등급 ↔ 실제 셀 값
@@ -497,17 +528,55 @@ def check_prose():
         known = set(x.lower() for x in re.findall(r"10\.\d{4,5}/[A-Za-z0-9./_()<>-]+", lt))
         miss = collections.Counter()
         for fn in os.listdir(BASE):
-            if not fn.endswith((".md", ".csv")) or fn in ("evidence_ledger.md", "gaps.md"):
+            if not fn.endswith((".md", ".csv", ".html")) or fn in ("evidence_ledger.md", "gaps.md"):
                 continue
             t = open(os.path.join(BASE, fn), encoding="utf-8", errors="replace").read()
-            for d in re.findall(r"10\.\d{4,5}/[A-Za-z0-9./_()<>-]+", t):
+            if fn.endswith(".html"):
+                t = re.sub(r"<[^>]+>", " ", t)          # 태그가 식별자에 섞이지 않도록
+            for d in re.findall(r"10\.\d{4,5}/[A-Za-z0-9./_()-]+", t):
                 d = d.lower().rstrip(").,;:]").rstrip(".")
                 if len(d) > 8 and d not in known:
                     miss[d] += 1
         if miss:
             for d, c in list(miss.most_common())[:8]:
-                warns.append(f"[R-04] 대장 미등재 식별자: {d} ({c}회) — 비(非)PubMed 출처면 대장에 성격을 적을 것")
+                errors.append(f"[R-04] 근거 대장 미등재 식별자: {d} ({c}회) — "
+                              f"대장에 등재하거나 비(非)PubMed 출처임을 대장에 명기할 것")
         info.append(f"[R-04] 인용 DOI ↔ 근거 대장 대조 완료 (미등재 {len(miss)}종)")
+
+
+def check_grade_mapping():
+    """인벤토리 essentiality ↔ M3 tier 매핑 검사 (`03_`의 기준표를 데이터 전체에 적용).
+    기준표: E0 → 필수 / E1 → 필수·조건부 / E2 → 조건부 / E3 → 선택."""
+    inv, _ = read_csv("material_inventory.csv")
+    ess, _ = read_csv("essential_items.csv")
+    if not (inv and ess):
+        return
+    order = {"E0": 0, "E1": 1, "E2": 2, "E3": 3}
+    best = {}
+    for r in ess:
+        for k in (norm_name(r.get("name_ko")), norm_name(r.get("name_en"))):
+            if len(k) < 3:
+                continue
+            t = (r.get("tier") or "").strip()
+            if t in order and (k not in best or order[t] < order[best[k][0]]):
+                best[k] = (t, r.get("essential_id"))
+    EXPECT = {"E0": {"필수"}, "E1": {"필수", "조건부"}, "E2": {"조건부"}, "E3": {"선택"}}
+    bad = []
+    for r in inv:
+        k = norm_name(r.get("name_ko"))
+        if k not in best:
+            continue
+        if (r.get("layer") or "") == "L9":       # 규격 항목은 다른 축
+            continue
+        t, eid = best[k]
+        e = re.sub(r"\(.*?\)", "", r.get("essentiality", "")).strip()
+        if e and e not in EXPECT[t]:
+            bad.append(f"{r.get('material_id')} {r.get('name_ko')}: 인벤토리 '{e}' ↔ "
+                       f"{eid} {t} (기대 {'/'.join(sorted(EXPECT[t]))})")
+    for b in bad[:12]:
+        errors.append(f"[R-13] essentiality ↔ M3 등급 매핑 위반: {b}")
+    if not bad:
+        info.append(f"[R-13] essentiality ↔ M3 등급 매핑: 대조 가능 {len(best)}종, 위반 0건")
 
 
 if __name__ == "__main__":
