@@ -3,8 +3,12 @@
 ECM(세포외기질) 소재 개발 분야 개요 · 소재 물질 인벤토리 · **오가노이드 3차원 지지체 필수 물질 문헌 확정** 조사 산출물.
 
 - **실행 ID**: ECMX-002 · **데이터 기준일**: 2026-09-14
+- **웹에서 바로 읽기**: <https://claude.ai/code/artifact/6fd8c3fd-ef33-4a52-8cf4-5d4d8357d274>
 - **주 산출물**: [`ECMX/ECMX_report.html`](ECMX/ECMX_report.html) — 외부 자원 없이 단독으로 열리는 자체 완결형 단일 HTML (자체 제작 인라인 SVG 13점)
 - **부속 데이터**: [`ECMX/ECMX_materials.xlsx`](ECMX/ECMX_materials.xlsx) — 10개 시트
+
+> **HTML 파일이 코드로 보인다면**: GitHub는 `.md`만 렌더링하고 `.html`은 소스로 표시한다.
+> 위 웹 링크로 열거나, 파일을 내려받아(`Raw` → 저장) 브라우저로 열면 정상적으로 보인다.
 
 ## 핵심 결론
 
