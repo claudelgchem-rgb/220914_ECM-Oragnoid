@@ -3,7 +3,7 @@ agent: N
 status: complete
 date_checked: 2026-09-14
 items_count: 94
-evidence_count: {papers: 71, patents: 0}
+evidence_count: {papers: 72, patents: 0}
 unresolved: 11
 ---
 

@@ -240,6 +240,7 @@ def main():
     check_extra()
     check_prose()
     check_grade_mapping()
+    check_evidence_count()
 
 
     print("=" * 72)
@@ -473,7 +474,7 @@ def check_prose():
         # '이 문서의 자기 인벤토리'를 가리키는 문맥에서만 발화한다.
         SELF_CTX = re.compile(r"등재|본 문서|이 문서|인벤토리|L[1-9]\b|"
                               + re.escape(cs.replace(".csv", "")))
-        for mm in re.finditer(r"\*{0,2}(\d{2,4})\*{0,2}\s*건\s*중", t):
+        for mm in re.finditer(r"\*{0,2}\s*(\d{2,4})\s*\*{0,2}\s*건\s*\*{0,2}\s*중", t):
             v = int(mm.group(1))
             if v <= 9 or v in ok_vals:
                 continue
@@ -554,29 +555,111 @@ def check_grade_mapping():
     order = {"E0": 0, "E1": 1, "E2": 2, "E3": 3}
     best = {}
     for r in ess:
-        for k in (norm_name(r.get("name_ko")), norm_name(r.get("name_en"))):
+        keys = {norm_name(r.get("name_ko")), norm_name(r.get("name_en"))}
+        for syn in re.split(r"[;,/|]", r.get("synonyms", "") or ""):
+            keys.add(norm_name(syn))
+        for k in keys:
             if len(k) < 3:
                 continue
             t = (r.get("tier") or "").strip()
             if t in order and (k not in best or order[t] < order[best[k][0]]):
                 best[k] = (t, r.get("essential_id"))
+
+    def lookup(row):
+        """인벤토리 행 ↔ M3 항목 결합. 정확 일치 → 포함관계 순으로 찾는다."""
+        cand = {norm_name(row.get("name_ko")), norm_name(row.get("name_en"))}
+        for syn in re.split(r"[;,/|]", row.get("synonyms", "") or ""):
+            cand.add(norm_name(syn))
+        cand = {c for c in cand if len(c) >= 3}
+        for c in cand:
+            if c in best:
+                return best[c]
+        # 포함관계 — 제품 표기가 더 길거나(재조합 인간 라미닌511) 더 짧은(라미닌) 경우.
+        # 단, 짧은 이름이 긴 합성어의 '가운데'에 박힌 경우는 결합하지 않는다.
+        # 'REDV 피브로넥틴 CS5 펩타이드'는 짧은 모티프이지 '전장 피브로넥틴'이 아니다 —
+        # 그런 결합을 허용하면 서로 다른 물질을 같은 등급 규칙에 묶게 된다.
+        def affix(a, b):
+            lo, hi = (a, b) if len(a) <= len(b) else (b, a)
+            if len(lo) < 4 or len(lo) / len(hi) < 0.6:
+                return False
+            return hi.startswith(lo) or hi.endswith(lo)
+
+        for c in cand:
+            if len(c) < 4:
+                continue
+            hits = {v for k, v in best.items() if len(k) >= 4 and affix(k, c)}
+            if len(hits) == 1:
+                return next(iter(hits))
+        return None
     EXPECT = {"E0": {"필수"}, "E1": {"필수", "조건부"}, "E2": {"조건부"}, "E3": {"선택"}}
     bad = []
+    matched = 0
     for r in inv:
-        k = norm_name(r.get("name_ko"))
-        if k not in best:
-            continue
         if (r.get("layer") or "") == "L9":       # 규격 항목은 다른 축
             continue
-        t, eid = best[k]
+        hit = lookup(r)
+        if not hit:
+            continue
+        matched += 1
+        t, eid = hit
         e = re.sub(r"\(.*?\)", "", r.get("essentiality", "")).strip()
         if e and e not in EXPECT[t]:
             bad.append(f"{r.get('material_id')} {r.get('name_ko')}: 인벤토리 '{e}' ↔ "
                        f"{eid} {t} (기대 {'/'.join(sorted(EXPECT[t]))})")
+
+    # ── 선언 매핑 검사 ──────────────────────────────────────────────
+    # 이름 대조는 제품명(인벤토리)과 기능명(M3)이 달라 정의역이 좁다.
+    # 그래서 행이 `confidence_reason`에 **스스로 인용한** M3 항목 ID를 읽어
+    # ① 그 ID가 실재하는지 ② 인용한 등급이 실제 등급과 같은지
+    # ③ 그 등급과 essentiality가 기준표에 맞는지를 검사한다. 정밀도가 높다.
+    tier_of = {r.get("essential_id"): (r.get("tier") or "").strip() for r in ess}
+    decl = miscite = 0
+    for r in inv:
+        reason = r.get("confidence_reason", "")
+        for m in re.finditer(r"(N-\d{3})\s*\(([^)]*)\)?[^.]{0,40}?(E[0-3])", reason):
+            eid, _nm, cited = m.group(1), m.group(2), m.group(3)
+            decl += 1
+            actual = tier_of.get(eid)
+            if actual is None:
+                errors.append(f"[G5] {r.get('material_id')} 사유가 실재하지 않는 M3 항목을 인용: {eid}")
+                miscite += 1
+                continue
+            if actual != cited:
+                errors.append(f"[G5] {r.get('material_id')} 사유의 인용 등급 불일치: "
+                              f"{eid}를 {cited}로 적었으나 실제 {actual}")
+                miscite += 1
+                continue
+            e = re.sub(r"\(.*?\)", "", r.get("essentiality", "")).strip()
+            if (r.get("layer") or "") != "L9" and e and e not in EXPECT[actual]:
+                errors.append(f"[R-13] {r.get('material_id')} 선언 매핑 위반: "
+                              f"'{e}' ↔ {eid} {actual} (기대 {'/'.join(sorted(EXPECT[actual]))})")
+    info.append(f"[G5] 선언 매핑 검사: {decl}쌍 대조, 오인용 {miscite}건")
+
     for b in bad[:12]:
         errors.append(f"[R-13] essentiality ↔ M3 등급 매핑 위반: {b}")
     if not bad:
-        info.append(f"[R-13] essentiality ↔ M3 등급 매핑: 대조 가능 {len(best)}종, 위반 0건")
+        info.append(f"[R-13] essentiality ↔ M3 등급 매핑: M3 키 {len(best)}종, 결합된 인벤토리 {matched}행, 위반 0건")
+
+
+def check_evidence_count():
+    """각 .md 헤더의 evidence_count.papers ↔ 그 문서가 실제로 인용한 고유 식별자 수.
+    본문만 고치고 헤더를 두는 실패 유형을 막는다(V 5차 감사 지적)."""
+    DOI_RE2 = re.compile(r"10\.\d{4,5}/[A-Za-z0-9./_()<>-]+")
+    for fn in sorted(os.listdir(BASE)):
+        if not re.match(r"(0[1-9]|1[0-2])_.*\.md$", fn):
+            continue
+        t = open(os.path.join(BASE, fn), encoding="utf-8", errors="replace").read()
+        m = re.search(r"evidence_count:\s*\{papers:\s*(\d+)", t)
+        if not m:
+            errors.append(f"[§7] {fn} 헤더에 evidence_count.papers 없음")
+            continue
+        hdr = int(m.group(1))
+        got = {d.lower().rstrip(").,;:]").rstrip(".") for d in DOI_RE2.findall(t)}
+        got = {d for d in got if len(d) > 8}
+        if hdr != len(got):
+            errors.append(f"[G5] {fn} 헤더 evidence_count.papers={hdr} ≠ "
+                          f"본문 고유 DOI {len(got)}건")
+    info.append("[G5] 헤더 evidence_count ↔ 본문 인용 식별자 대조 완료")
 
 
 if __name__ == "__main__":
