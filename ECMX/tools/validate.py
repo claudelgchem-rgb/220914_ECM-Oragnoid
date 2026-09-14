@@ -14,7 +14,7 @@
 사용:  python3 tools/validate.py [BASE_DIR]
 종료코드 0=통과, 1=실패
 """
-import csv, os, re, sys, json
+import collections, csv, json, os, re, sys
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -238,6 +238,7 @@ def main():
 
 
     check_extra()
+    check_prose()
 
 
     print("=" * 72)
@@ -403,6 +404,110 @@ def check_extra():
             info.append("[R-13] 초록 전용·신뢰도 하 근거의 E0·E1: 0건")
 
 
+
+
+
+
+# ─────────── 3차 감사 반영: 산문·헤더까지 훑는 교차 검사 ───────────
+DOC_CSV = [("03_materials_bio.md", "inv_bio.csv"), ("04_materials_chem.md", "inv_chem.csv"),
+           ("05_specs_regulatory.md", "inv_spec.csv"), ("06_supply.md", "suppliers.csv"),
+           ("07_patents.md", "patents_landscape.csv"), ("11_essential_materials.md", "essential_items.csv"),
+           ("12_patent_essentials.md", "patent_essentials.csv")]
+
+# 배지·비매트릭스 성분을 식별하는 표현 (R-10)
+MEDIUM_PAT = re.compile(r"매트릭스\s*(결합형\s*)?아님|매트릭스\s*성분이\s*아니|"
+                        r"배지\s*(첨가형|성분|조성)|medium supplement")
+
+
+def check_prose():
+    """산문·헤더가 데이터와 어긋나는 유형을 잡는다. 2·3차 감사에서 반복 지적된 실패 유형이다."""
+
+    # T-a. 헤더 items_count ↔ 대응 CSV 행수
+    for md, cs in DOC_CSV:
+        pm, pc = os.path.join(BASE, md), os.path.join(BASE, cs)
+        if not (os.path.exists(pm) and os.path.exists(pc)):
+            continue
+        t = open(pm, encoding="utf-8", errors="replace").read()
+        m = re.search(r"^items_count:\s*(\d+)", t, re.M)
+        n = len(list(csv.DictReader(open(pc, encoding="utf-8-sig"))))
+        if not m:
+            errors.append(f"[§7] {md} 헤더에 items_count 없음")
+        elif int(m.group(1)) != n:
+            errors.append(f"[G5] {md} 헤더 items_count={m.group(1)} ≠ {cs} 행수 {n}")
+    info.append("[G5] 헤더 items_count ↔ CSV 행수 대조 완료")
+
+    # T-b. 산문의 '옛 총계' 잔존 — 각 문서가 자기 CSV 행수가 아닌 총계를 말하는지
+    for md, cs in DOC_CSV:
+        pm, pc = os.path.join(BASE, md), os.path.join(BASE, cs)
+        if not (os.path.exists(pm) and os.path.exists(pc)):
+            continue
+        n = len(list(csv.DictReader(open(pc, encoding="utf-8-sig"))))
+        t = open(pm, encoding="utf-8", errors="replace").read()
+        for mm in re.finditer(r"(등재\s*(물질|항목|건수)[^\n]{0,30}?|총\s*)\*{0,2}(\d{2,4})\*{0,2}\s*건", t):
+            v = int(mm.group(3))
+            if v != n and v > 9:
+                line = t[:mm.start()].count("\n") + 1
+                errors.append(f"[G5] {md}:{line} 산문 총계 {v}건 ≠ {cs} 행수 {n}")
+        # 'N건 중' 형태의 모수도 총계와 일치해야 한다
+        for mm in re.finditer(r"\*{0,2}(\d{2,4})\*{0,2}\s*건\s*중", t):
+            v = int(mm.group(1))
+            if v > 9 and v != n and not re.search(r"[0-9]\s*건\s*중\s*(실제|해당|일부)?\s*[0-9]", mm.group(0)):
+                line = t[:mm.start()].count("\n") + 1
+                warns.append(f"[G5] {md}:{line} 모수 {v}건 (CSV 행수 {n}) — 부분집합이면 무시")
+    info.append("[G5] 산문 총계 ↔ CSV 행수 대조 완료")
+
+    # T-c. 본문이 주장하는 매트릭스 셀 등급 ↔ 실제 셀 값
+    mtx, _ = read_csv("essential_matrix.csv")
+    if mtx:
+        present = set()
+        for row in mtx:
+            for k, v in row.items():
+                vv = (v or "").strip()[:2]
+                if vv in ("E0", "E1", "E2", "E3"):
+                    present.add(vv)
+        for md, _cs in DOC_CSV:
+            pm = os.path.join(BASE, md)
+            if not os.path.exists(pm): continue
+            t = open(pm, encoding="utf-8", errors="replace").read()
+            for mm in re.finditer(r"(E[0-3])[^\n]{0,24}(으로|로)\s*표기했다|"
+                                  r"매트릭스[^\n]{0,60}?(E[0-3])[^\n]{0,12}(으로|로)\s*(표기|기재)", t):
+                g = mm.group(1) or mm.group(3)
+                if g and g not in present:
+                    line = t[:mm.start()].count("\n") + 1
+                    errors.append(f"[G4] {md}:{line} 본문이 매트릭스 {g} 셀을 근거로 드나 "
+                                  f"실제 매트릭스에 {g} 셀은 0개")
+        info.append(f"[G4] 본문의 매트릭스 셀 인용 대조 완료 (실재 등급: {sorted(present)})")
+
+    # T-d. 배지·비매트릭스 성분의 essentiality 는 '선택'이어야 한다 (R-10 정의역 전수)
+    inv, _ = read_csv("material_inventory.csv")
+    if inv:
+        bad = [r for r in inv
+               if MEDIUM_PAT.search(r.get("function_role", ""))
+               and re.sub(r"\(.*?\)", "", r.get("essentiality", "")).strip() != "선택"]
+        for r in bad:
+            errors.append(f"[R-10] 배지·비매트릭스 성분의 필수도가 '선택'이 아님: "
+                          f"{r.get('material_id')} {r.get('name_ko')} = '{r.get('essentiality')}'")
+        if not bad:
+            info.append("[R-10] 배지·비매트릭스 성분 필수도 전수 검사: 위반 0건")
+
+    # T-e. 인용 DOI ↔ 근거 대장 등재
+    led = os.path.join(BASE, "evidence_ledger.md")
+    if os.path.exists(led):
+        lt = open(led, encoding="utf-8", errors="replace").read()
+        known = set(x.lower() for x in re.findall(r"10\.\d{4,5}/[A-Za-z0-9./_()<>-]+", lt))
+        miss = collections.Counter()
+        for fn in os.listdir(BASE):
+            if not fn.endswith((".md", ".csv")) or fn in ("evidence_ledger.md", "gaps.md"):
+                continue
+            t = open(os.path.join(BASE, fn), encoding="utf-8", errors="replace").read()
+            for d in re.findall(r"10\.\d{4,5}/[A-Za-z0-9./_()<>-]+", t):
+                d = d.lower().rstrip(").,;:]").rstrip(".")
+                if len(d) > 8 and d not in known:
+                    miss[d] += 1
+        if miss:
+            for d, c in list(miss.most_common())[:8]:
+                warns.append(f"[R-04] 대장 미등재 식별자: {d} ({c}회) — 비(非)PubMed 출처면 대장에 성격을 적을 것")
+        info.append(f"[R-04] 인용 DOI ↔ 근거 대장 대조 완료 (미등재 {len(miss)}종)")
 
 
 if __name__ == "__main__":
