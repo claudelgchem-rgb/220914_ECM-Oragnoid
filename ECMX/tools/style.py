@@ -49,7 +49,8 @@ body{
 #toc a.cur{color:var(--acc); background:var(--acc-soft); border-left-color:var(--acc); font-weight:600}
 #tocBtn{display:none}
 
-main{flex:1 1 auto; min-width:0; padding:0 26px 90px; margin:0 auto; max-width:calc(var(--maxw) + 190px)}
+main{flex:1 1 auto; min-width:0; max-width:calc(var(--maxw) + 190px);
+  padding-inline:26px; padding-block:0 90px; margin:0 auto; overflow-x:clip}
 
 /* ---------- 표지 ---------- */
 .cover{padding:54px 0 30px; border-bottom:2px solid var(--line2); margin-bottom:34px}
@@ -131,7 +132,10 @@ figcaption b{color:var(--ink)}
   border:1px dashed var(--line2); padding:17px 20px; border-radius:var(--radius); margin:2em 0}
 
 details{border:1px solid var(--line); border-radius:var(--radius); padding:11px 16px;
-  margin:1.3em 0; background:var(--surface)}
+  margin:1.3em 0; background:var(--surface);
+  /* 접힌 상태의 details가 내부 표의 고유 폭을 바깥으로 흘려 문서에 가로 스크롤을
+     만드는 것을 막는다. 표 자체는 .tw 안에서 따로 가로 스크롤된다. */
+  min-width:0; overflow-x:clip}
 details>summary{cursor:pointer; font-weight:700; font-size:14.6px; color:var(--acc); list-style:revert}
 details[open]>summary{margin-bottom:12px; padding-bottom:9px; border-bottom:1px solid var(--line)}
 
@@ -151,7 +155,7 @@ details[open]>summary{margin-bottom:12px; padding-bottom:9px; border-bottom:1px 
   #tocBtn{display:block; width:100%; text-align:left; background:transparent; border:0;
     color:var(--acc); font-weight:700; font-size:14px; padding:6px 2px; cursor:pointer;
     font-family:inherit}
-  main{padding:0 16px 70px; max-width:none}
+  main{padding-inline:16px; padding-block:0 70px; max-width:none}
   .cover{padding:28px 0 22px}
   .cover h1{font-size:1.6rem}
   h2{font-size:1.3rem}

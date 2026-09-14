@@ -755,10 +755,66 @@ def appendix_b():
 {R.render()}
 </details>
 
-<p style="font-size:13.5px;color:var(--mut)">더 넓은 근거 목록 — 본 조사가 수집했으나 본문에 인용하지 않은
-문헌을 포함한 전체 — 은 별도 파일 <code>evidence_ledger.md</code>와
-<code>ECMX_materials.xlsx</code>의 Evidence 시트에 있다.</p>
+{_full_ledger()}
 """
+
+
+def _full_ledger():
+    """evidence_ledger.md 전체를 부록 B에 싣는다 (§9-3: '근거 대장(논문·특허 전체)')."""
+    p = os.path.join(BASE, "evidence_ledger.md")
+    if not os.path.exists(p):
+        return ""
+    t = open(p, encoding="utf-8").read()
+
+    def grab(head):
+        m = re.search(rf"^## {re.escape(head)}.*?$", t, re.M)
+        if not m: return []
+        seg = t[m.end():]
+        m2 = re.search(r"^## ", seg, re.M)
+        if m2: seg = seg[:m2.start()]
+        rows = []
+        for line in seg.splitlines():
+            if not line.startswith("|") or re.match(r"^\|\s*[-:]+", line):
+                continue
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if cells and cells[0] in ("#", "DOI", "특허번호"): continue
+            rows.append(cells)
+        return rows
+
+    pap = grab_papers = None
+    for h in re.findall(r"^## (.+)$", t, re.M):
+        if "서지 확정분" in h: pap = grab(h)
+    pats = None
+    for h in re.findall(r"^## (.+)$", t, re.M):
+        if "특허 근거" in h: pats = grab(h)
+    out = []
+    if pap:
+        rows = [[esc(c) for c in r[:8]] for r in pap]
+        out.append(f"""
+<h4>B-1. 수집·인용 논문 전체 ({len(rows)}건)</h4>
+<p style="font-size:13.6px;color:var(--mut)">본문에 위첨자로 인용한 것 외에, 각 산출물(.md/.csv)이
+근거로 사용한 문헌 전체다. <b>전문</b> 열에 PMCID가 있는 항목은 오픈액세스 전문을 내려받아
+본문을 직접 확인한 것이다.</p>
+<details><summary>논문 근거 {len(rows)}건 펼쳐 보기</summary>
+{table(['#','제목','저널','연도','DOI','PMID','전문','인용 파일'], rows,
+       f'표 B-1. 논문 근거 대장 {len(rows)}건. 서지는 Europe PMC 직접 조회로 확정(2026-09-14).')}
+</details>""")
+    if pats:
+        rows = [[esc(c) for c in r[:8]] for r in pats]
+        out.append(f"""
+<h4>B-2. 수집·인용 특허 전체 ({len(rows)}건)</h4>
+<p style="font-size:13.6px;color:var(--mut)"><b>청구항</b> 열이 '청구항 원문 확보'인 항목은
+독립항 원문을 직접 읽고 분석한 것이다(R-07 충족). '서지정보만'인 항목에 대해서는
+청구항 범위를 서술하지 않았다.</p>
+<details><summary>특허 근거 {len(rows)}건 펼쳐 보기</summary>
+{table(['#','특허번호','제목','출원인','출원일','공개/등록일','청구항','인용 파일'], rows,
+       f'표 B-2. 특허 근거 대장 {len(rows)}건. 청구항 원문은 공보 페이지에서 직접 취득(2026-09-14).')}
+</details>""")
+    out.append("""
+<p style="font-size:13.5px;color:var(--mut)">같은 내용이 <code>evidence_ledger.md</code>와
+<code>ECMX_materials.xlsx</code>의 Evidence 시트에도 있다. 검증 풀과 대조되지 않은 식별자는
+<code>evidence_ledger.md</code>의 별도 절에 분리해 기록했다.</p>""")
+    return "\n".join(out)
 
 
 GLOSSARY = [

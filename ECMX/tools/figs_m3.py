@@ -141,23 +141,27 @@ def fig_stiffness(bands, lo=10.0, hi=5e4):
 
 def fig_heatmap(cols, rows):
     """조직 × 요구사항 히트맵. cols=[열이름], rows=[(조직명,[셀값...])] 셀값은 'E0'~'E3' 시작"""
-    W = 880
+    # 회전 라벨이 오른쪽 밖으로 잘리지 않도록 뷰박스를 라벨 길이에 맞춰 넓힌다.
     lead = 116
-    cw = max(58, min(88, int((W - lead - 30) / max(1, len(cols)))))
+    maxlab = max((len(c) for c in cols), default=10)
+    pad_r = int(28 + maxlab * 4.6)          # 회전 라벨이 차지하는 오른쪽 여백
+    cw = 74
+    W = lead + cw * max(1, len(cols)) + pad_r
     H = 152 + len(rows) * 40 + 86
     b = [rect(0, 0, W, H, C["bg"], rx=0)]
     b.append(txt(W/2, 24, "조직별 요구 차이 매트릭스", 15, C["ink"], "middle", "bold"))
     b.append(txt(W/2, 43, "같은 '오가노이드'라도 조직마다 지지체에 요구하는 것이 다르다. 한 조직에서 필수인 것이 다른 조직에서는 선택이 된다.",
                  10.4, C["mut"], "middle"))
-    b.append(legend(240, 68, [(TIER_FILL[t], f"{t} {n}") for t, n in
-                              (("E0", "절대필수"), ("E1", "조건부"), ("E2", "선택"), ("E3", "대체가능·근거없음"))],
+    b.append(legend(max(30, W / 2 - 300), 68,
+                    [(TIER_FILL[t], f"{t} {n}") for t, n in
+                     (("E0", "절대필수"), ("E1", "조건부"), ("E2", "선택"), ("E3", "대체가능·근거없음"))],
                     9.8, horiz=True, box=10))
     y0 = 96
     for j, cname in enumerate(cols):
         x = lead + j * cw
-        b.append(f'<g transform="translate({x+cw/2},{y0+44}) rotate(-42)">'
-                 f'<text x="0" y="0" font-size="9.4" fill="{C["mut"]}" text-anchor="start" '
-                 f'font-weight="bold">{esc(cname[:16])}</text></g>')
+        b.append(f'<g transform="translate({x+cw/2-6},{y0+46}) rotate(-40)">'
+                 f'<text x="0" y="0" font-size="9.6" fill="{C["mut"]}" text-anchor="start" '
+                 f'font-weight="bold">{esc(cname[:22])}</text></g>')
     y = y0 + 52
     for i, (tissue, cells) in enumerate(rows):
         b.append(rect(10, y, W - 20, 38, C["line"], rx=5, op=0.16 if i % 2 else 0.05))
