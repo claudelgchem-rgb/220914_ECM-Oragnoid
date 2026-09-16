@@ -229,11 +229,39 @@ def fig_conc_modulus(params):
     return svg(W, H, "".join(b), "콜라겐 농도와 겔 강성")
 
 
+# 세포 공존 판정은 추측하지 않는다. BOM 본문이 그렇게 적었을 때만 그렇게 표시한다.
+# 부정 표현을 먼저 걸러야 한다 — '세포 봉입 불가'에도 '세포 봉입'이 들어 있기 때문이다.
+_CC_NEG = re.compile(r"봉입\s*(?:절대\s*)?불가|적용\s*불가|세포\s*없는|부적합|비세포|"
+                     r"세포를?\s*넣기\s*전")
+_CC_POS = re.compile(r"세포\s*존재\s*하\s*가교가?\s*가능|세포\s*봉입\s*상태|"
+                     r"세포와\s*함께\s*(?:굳|가교)")
+_CC_LIM = re.compile(r"제한적|세포\s*DNA\s*손상|세포\s*손상|독성이\s*보고|산화\s*스트레스")
+
+_CC_STATE = {
+    "가능": (C["ok"], "세포를 넣은 채 가교 가능"),
+    "제한적": (C["cnd"], "조건부 — 조사량·농도에 따라 갈림"),
+    "불가": (C["bad"], "세포를 넣기 전 처리 전용"),
+    "명시 없음": (C["faint"], "BOM 본문에 판단 근거 없음"),
+}
+
+
+def _cell_compat(r):
+    blob = " ".join([r.get("role_in_collagen_system") or "", r.get("necessity_basis") or "",
+                     r.get("risk") or "", r.get("quant_spec") or ""])
+    if _CC_NEG.search(blob):
+        return "불가"
+    if _CC_POS.search(blob):
+        return "가능"
+    if _CC_LIM.search(blob):
+        return "제한적"
+    return "명시 없음"
+
+
 def fig_crosslinkers(rows):
     """L6 가교제 — 세포를 넣은 채 굳힐 수 있는가가 첫 번째 질문이다."""
     L6 = [r for r in rows if (r.get("layer") or "").strip().upper() == "L6"]
-    W = 900
-    H = 112 + max(len(L6), 1) * 34
+    W = 940
+    H = 132 + max(len(L6), 1) * 34
     b = [rect(0, 0, W, H, C["bg"], rx=0)]
     b.append(title(20, 26, "가교 수단 비교 — 세포 존재 하 가교 가능 여부",
                    "강성을 올리는 모든 수단이 세포와 함께 쓰일 수 있는 것은 아니다"))
@@ -242,34 +270,43 @@ def fig_crosslinkers(rows):
         return svg(W, H, "".join(b), "가교 수단 비교")
 
     b.append(txt(24, 66, "가교 수단", 10.5, C["faint"], weight="600"))
-    b.append(txt(330, 66, "필수도", 10.5, C["faint"], weight="600"))
-    b.append(txt(410, 66, "정량 조건", 10.5, C["faint"], weight="600"))
+    b.append(txt(322, 66, "필수도", 10.5, C["faint"], weight="600"))
+    b.append(txt(400, 66, "정량 조건", 10.5, C["faint"], weight="600"))
+    b.append(txt(W - 24, 66, "세포 공존", 10.5, C["faint"], "end", weight="600"))
     b.append(line(20, 72, W - 20, 72, C["line2"], 1))
 
+    tally = {}
     y = 78
-    for r in L6:
+    for k, r in enumerate(L6):
         nm = (r.get("name_ko") or r.get("name_en") or "").strip()
         nec_ = (r.get("necessity") or "").strip()
         qs = (r.get("quant_spec") or "").strip()
-        alive = re.search(r"세포\s*(존재|공존|포함|동시|봉입)|in\s*situ|세포와\s*함께", 
-                          " ".join([r.get("role_in_collagen_system") or "",
-                                    r.get("necessity_basis") or "", qs]))
-        b.append(rect(20, y, W - 40, 30, "#FFFFFF" if y // 30 % 2 else "#FAFCFC",
+        st = _cell_compat(r)
+        tally[st] = tally.get(st, 0) + 1
+        col = _CC_STATE[st][0]
+        b.append(rect(20, y, W - 40, 30, "#FFFFFF" if k % 2 else "#FAFCFC",
                       rx=5, stroke=C["line"]))
-        b.append(txt(30, y + 20, nm[:22], 11.8, C["ink"], weight="600"))
-        b.append(rect(330, y + 7, 52, 17, N_SOLID.get(nec_, C["opt"]), rx=8.5))
-        b.append(txt(356, y + 19, nec_ or "—", 10, N_TXT.get(nec_, "#fff"), "middle", "600"))
-        b.append(txt(410, y + 20, (qs or "정량 근거 없음")[:52], 10.4,
-                     C["mut"] if qs and qs != "정량 근거 없음" else C["faint"],
-                     mono=bool(qs and qs != "정량 근거 없음")))
-        b.append(circ(W - 42, y + 15, 5, C["ok"] if alive else C["bad"]))
+        b.append(txt(30, y + 20, nm[:24], 11.6, C["ink"], weight="600"))
+        b.append(rect(322, y + 7, 52, 17, N_SOLID.get(nec_, C["opt"]), rx=8.5))
+        b.append(txt(348, y + 19, nec_ or "—", 10, N_TXT.get(nec_, "#fff"), "middle", "600"))
+        ok = qs and qs != "정량 근거 없음"
+        b.append(txt(400, y + 20, (qs or "정량 근거 없음")[:48], 10.4,
+                     C["mut"] if ok else C["faint"], mono=bool(ok)))
+        b.append(circ(W - 96, y + 15, 4.6, col))
+        b.append(txt(W - 86, y + 19, st, 10.2, col, weight="600"))
         y += 34
-    b.append(txt(W - 60, 66, "세포 공존", 10.5, C["faint"], "end", weight="600"))
-    b.append(circ(26, H - 24, 4.4, C["ok"]))
-    b.append(txt(36, H - 20, "BOM 근거란에 세포 존재 하 가교가 명시된 건", 10.2, C["mut"]))
-    b.append(circ(310, H - 24, 4.4, C["bad"]))
-    b.append(txt(320, H - 20, "명시되지 않음 — 세포를 넣기 전 처리로 보아야 한다", 10.2, C["mut"]))
-    return svg(W, H, "".join(b), "가교 수단 비교")
+
+    lx = 24
+    for st, (col, desc) in _CC_STATE.items():
+        if st not in tally:
+            continue
+        b.append(circ(lx + 5, H - 26, 4.6, col))
+        b.append(txt(lx + 15, H - 22, f"{st} {tally[st]}건 — {desc}", 10.1, C["mut"]))
+        lx += 250 if len(desc) > 16 else 200
+    b.append(txt(24, H - 6, "판정은 BOM의 역할·판정근거·위험 칸에 적힌 서술을 그대로 옮긴 것이다. "
+                            "본문에 언급이 없으면 '명시 없음'으로 두고 추정하지 않는다.",
+                 9.8, C["faint"]))
+    return svg(W, H, "".join(b), "가교 수단과 세포 존재 하 가교 가능 여부")
 
 
 def fig_med_categories(rows):
